@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "name": "账号1",
+      "cookie": "JSESSID=xxxxxxxx",
+      "enabled": true
+    },
+    {
+      "name": "账号2",
+      "cookie": "JSESSID=yyyyyyyy",
+      "enabled": false
+    }
+  ],
+  "notify": {
+    "wecom_webhook": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxx",
+    "pushplus_token": "",
+    "serverchan_sendkey": "",
+    "bark_device_key": "",
+    "wxpusher_app_token": "",
+    "wxpusher_uids": []
+  }
+}
