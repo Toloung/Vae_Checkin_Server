@@ -1,5 +1,6 @@
 # Vae_Checkin_Server
 
+使用ChatGPT制作，未经测试 
 云服务器傻瓜版 Vae+ 自动签到。
 
 ## 最简单用法
