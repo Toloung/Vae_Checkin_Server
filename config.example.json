@@ -18,5 +18,9 @@
     "bark_device_key": "",
     "wxpusher_app_token": "",
     "wxpusher_uids": []
+  },
+  "run": {
+    "attempts": 12,
+    "interval_seconds": 0.25
   }
 }
