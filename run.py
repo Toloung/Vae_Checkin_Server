@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from notifier import Notifier
-from vae_api import run_checkin
+from vae_api import create_session, run_checkin, warmup
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -56,7 +56,12 @@ def get_run_options(config, args):
 
 def execute_user(user, attempts, interval):
     try:
-        checkin_ok, status_ok, message = run_checkin(user["cookie"], attempts=attempts, interval=interval)
+        checkin_ok, status_ok, message = run_checkin(
+            user["cookie"],
+            attempts=attempts,
+            interval=interval,
+            session=user.get("session"),
+        )
     except Exception as exc:
         checkin_ok = False
         status_ok = False
@@ -70,27 +75,77 @@ def execute_user(user, attempts, interval):
     }
 
 
-def wait_until(clock_time):
+def resolve_target_time(clock_time):
+    parts = clock_time.split(":")
+    if len(parts) == 2:
+        hour = int(parts[0])
+        minute = int(parts[1])
+        second = 0.0
+    elif len(parts) == 3:
+        hour = int(parts[0])
+        minute = int(parts[1])
+        second = float(parts[2])
+    else:
+        raise ValueError("--wait-until 必须是 HH:MM、HH:MM:SS 或 HH:MM:SS.sss")
+
+    whole_second = int(second)
+    microsecond = int(round((second - whole_second) * 1_000_000))
+
+    now = datetime.datetime.now()
+    target = now.replace(hour=hour, minute=minute, second=whole_second, microsecond=microsecond)
+    if target <= now:
+        target += datetime.timedelta(days=1)
+    return target
+
+
+def precise_wait_until(target, label):
+    while True:
+        remaining = (target - datetime.datetime.now()).total_seconds()
+        if remaining <= 0:
+            return
+        if remaining > 1:
+            time.sleep(remaining - 0.3)
+        elif remaining > 0.05:
+            time.sleep(remaining / 2)
+        elif remaining > 0.003:
+            time.sleep(0.001)
+        else:
+            pass
+
+
+def warmup_users(users, max_workers):
+    print("开始预热连接")
+
+    def do_warmup(user):
+        session = create_session()
+        ok, message = warmup(user["cookie"], session=session)
+        user["session"] = session
+        return user["name"], ok, message
+
+    workers = min(len(users), max_workers)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(do_warmup, user) for user in users]
+        for future in as_completed(futures):
+            name, ok, message = future.result()
+            state = "OK" if ok else "WARN"
+            print(f"预热 {state}：{name} - {message}")
+
+
+def wait_until(clock_time, users=None, max_workers=1, prewarm_seconds=0):
     if not clock_time:
         return
 
-    parts = [int(part) for part in clock_time.split(":")]
-    if len(parts) == 2:
-        hour, minute = parts
-        second = 0
-    elif len(parts) == 3:
-        hour, minute, second = parts
-    else:
-        raise ValueError("--wait-until 必须是 HH:MM 或 HH:MM:SS")
+    target = resolve_target_time(clock_time)
+    wait_seconds = (target - datetime.datetime.now()).total_seconds()
+    print(f"等待到 {target.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} 开始抢签，约 {wait_seconds:.1f} 秒")
 
-    now = datetime.datetime.now()
-    target = now.replace(hour=hour, minute=minute, second=second, microsecond=0)
-    if target <= now:
-        target += datetime.timedelta(days=1)
+    if users and prewarm_seconds > 0:
+        prewarm_target = target - datetime.timedelta(seconds=prewarm_seconds)
+        if prewarm_target > datetime.datetime.now():
+            precise_wait_until(prewarm_target, "预热")
+            warmup_users(users, max_workers)
 
-    wait_seconds = (target - now).total_seconds()
-    print(f"等待到 {target.strftime('%Y-%m-%d %H:%M:%S')} 开始抢签，约 {wait_seconds:.1f} 秒")
-    time.sleep(wait_seconds)
+    precise_wait_until(target, "抢签")
 
 
 def main():
@@ -99,6 +154,7 @@ def main():
     parser.add_argument("--attempts", type=int, default=None, help="每个账号最多尝试签到次数")
     parser.add_argument("--interval", type=float, default=None, help="每次尝试之间的间隔秒数")
     parser.add_argument("--wait-until", default=None, help="等到指定本地时间再开始，例如 00:00:00")
+    parser.add_argument("--prewarm-seconds", type=float, default=2, help="抢签前多少秒预热连接，0 表示不预热")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -111,7 +167,12 @@ def main():
     status_results = []
     ordered_results = [None] * len(users)
 
-    wait_until(args.wait_until)
+    wait_until(
+        args.wait_until,
+        users=users,
+        max_workers=run_options["max_workers"],
+        prewarm_seconds=args.prewarm_seconds,
+    )
 
     print(
         f"开始抢签：{len(users)} 个账号，每个账号最多 {run_options['attempts']} 次，"

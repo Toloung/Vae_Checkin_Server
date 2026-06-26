@@ -35,6 +35,12 @@ RETRYABLE_KEYWORDS = (
 )
 
 
+def create_session():
+    session = requests.Session()
+    session.headers.update({"Connection": "keep-alive"})
+    return session
+
+
 def format_server_time(timestamp):
     if not timestamp:
         return "未知"
@@ -43,22 +49,23 @@ def format_server_time(timestamp):
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def post_api(url, cookie):
-    response = requests.post(url, headers={"Cookie": cookie}, timeout=DEFAULT_TIMEOUT)
+def post_api(url, cookie, session=None):
+    client = session or requests
+    response = client.post(url, headers={"Cookie": cookie}, timeout=DEFAULT_TIMEOUT)
     response.raise_for_status()
     return response.json()
 
 
-def checkin(cookie):
-    data = post_api(CHECKIN_URL, cookie)
+def checkin(cookie, session=None):
+    data = post_api(CHECKIN_URL, cookie, session=session)
     if data.get("state"):
         message = data.get("animation", {}).get("medal", {}).get("title", "签到成功")
         return True, message
     return False, data.get("errMsg", "签到失败")
 
 
-def status(cookie):
-    data = post_api(STATUS_URL, cookie)
+def status(cookie, session=None):
+    data = post_api(STATUS_URL, cookie, session=session)
     if data.get("state"):
         record = data.get("result", {}).get("signRecord", {})
         return {
@@ -75,6 +82,17 @@ def status(cookie):
         "message": data.get("errMsg", "查询签到状态失败"),
         "server_time": data.get("serverTime", 0),
     }
+
+
+def warmup(cookie, session=None):
+    started_at = time.monotonic()
+    try:
+        current_status = status(cookie, session=session)
+        elapsed_ms = int((time.monotonic() - started_at) * 1000)
+        return True, f"预热完成：{format_server_time(current_status.get('server_time'))}（{elapsed_ms}ms）"
+    except Exception as exc:
+        elapsed_ms = int((time.monotonic() - started_at) * 1000)
+        return False, f"预热失败：{exc}（{elapsed_ms}ms）"
 
 
 def format_rank(rank):
@@ -99,7 +117,7 @@ def classify_checkin_result(ok, message):
     return "unknown", "未知返回，继续尝试", True
 
 
-def run_checkin(cookie, attempts=1, interval=1):
+def run_checkin(cookie, attempts=1, interval=1, session=None):
     attempts = max(1, int(attempts))
     interval = max(0, float(interval))
 
@@ -113,7 +131,7 @@ def run_checkin(cookie, attempts=1, interval=1):
     for attempt in range(1, attempts + 1):
         request_started_at = time.monotonic()
         try:
-            checkin_ok, checkin_message = checkin(cookie)
+            checkin_ok, checkin_message = checkin(cookie, session=session)
         except Exception as exc:
             checkin_ok = False
             checkin_message = f"请求失败：{exc}"
@@ -129,7 +147,7 @@ def run_checkin(cookie, attempts=1, interval=1):
             time.sleep(interval)
 
     try:
-        current_status = status(cookie)
+        current_status = status(cookie, session=session)
     except Exception as exc:
         current_status = {
             "ok": False,

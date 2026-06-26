@@ -144,7 +144,7 @@ python3 menu.py
 `run_10s.sh` 默认内容：
 
 ```bash
-python3 run.py --wait-until 00:00:00 --attempts 12 --interval 0.25 >> checkin.log 2>&1
+python3 run.py --wait-until 00:00:00 --prewarm-seconds 2 --attempts 12 --interval 0.25 >> checkin.log 2>&1
 ```
 
 如果要调整抢签参数，编辑：
@@ -157,6 +157,7 @@ nano /home/ubuntu/Vae_Checkin_Server/run_10s.sh
 
 ```text
 --wait-until 00:00:00   开始抢签时间
+--prewarm-seconds 2     抢签前 2 秒预热连接
 --attempts 12           最多尝试次数
 --interval 0.25         每次尝试间隔秒数
 ```
