@@ -1,0 +1,13 @@
+[Unit]
+Description=Vae+ midnight check-in
+Wants=network-online.target
+After=network-online.target
+OnFailure=checkin-failure-notify@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/Vae_Checkin_Server
+ExecStart=/usr/bin/flock /run/vae-checkin.lock /usr/bin/bash /root/Vae_Checkin_Server/run_10s.sh
+TimeoutStartSec=5min
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Vae+ check-in prestart every day
+
+[Timer]
+OnCalendar=*-*-* 23:58:00
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=vae-checkin.service
+
+[Install]
+WantedBy=timers.target

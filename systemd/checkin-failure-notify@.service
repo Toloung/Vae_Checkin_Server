@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify check-in task failure for %i
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/checkin-failure-notify.py %i

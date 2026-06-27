@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "== Current time =="
+date '+%Y-%m-%d %H:%M:%S %Z'
+
+echo
+echo "== Timers =="
+systemctl list-timers --all | grep -E 'vae-checkin|qqmusic-first-sign' || true
+
+echo
+echo "== Last service results =="
+for unit in vae-checkin.service vae-checkin-fallback.service qqmusic-first-sign.service; do
+  active="$(systemctl show "$unit" -p ActiveState --value 2>/dev/null || true)"
+  result="$(systemctl show "$unit" -p Result --value 2>/dev/null || true)"
+  exit_code="$(systemctl show "$unit" -p ExecMainStatus --value 2>/dev/null || true)"
+  echo "$unit  active=${active:-unknown} result=${result:-unknown} exit=${exit_code:-unknown}"
+done
+
+echo
+echo "== Vae recent log =="
+tail -n 18 /root/Vae_Checkin_Server/checkin.log 2>/dev/null || true
+
+echo
+echo "== QQ Music recent log =="
+tail -n 18 /root/qqmusic-medal-checkin/logs/first-sign.log 2>/dev/null || true

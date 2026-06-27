@@ -1,0 +1,13 @@
+[Unit]
+Description=Vae+ fallback check-in
+Wants=network-online.target
+After=network-online.target
+OnFailure=checkin-failure-notify@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/Vae_Checkin_Server
+ExecStart=/usr/local/bin/vae-checkin-fallback.sh
+TimeoutStartSec=3min
+StandardOutput=journal
+StandardError=journal

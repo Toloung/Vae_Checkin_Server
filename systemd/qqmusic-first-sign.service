@@ -1,0 +1,14 @@
+[Unit]
+Description=QQ Music medal check-in
+Wants=network-online.target
+After=network-online.target
+OnFailure=checkin-failure-notify@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/qqmusic-medal-checkin
+Environment=TZ=Asia/Shanghai
+ExecStart=/usr/bin/bash /root/qqmusic-medal-checkin/run_first_sign.sh --now
+TimeoutStartSec=10min
+StandardOutput=journal
+StandardError=journal
