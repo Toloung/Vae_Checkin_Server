@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /home/ubuntu/Vae_Checkin_Server
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 export PYTHONIOENCODING=utf-8
 export PYTHONUNBUFFERED=1
 
