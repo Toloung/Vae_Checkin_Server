@@ -2,7 +2,7 @@
 Description=Run Vae+ check-in prestart every day
 
 [Timer]
-OnCalendar=*-*-* 23:58:00
+OnCalendar=*-*-* 23:59:50
 AccuracySec=1s
 RandomizedDelaySec=0
 Unit=vae-checkin.service
