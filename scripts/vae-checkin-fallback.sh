@@ -6,7 +6,18 @@ export PYTHONIOENCODING=utf-8
 export PYTHONUNBUFFERED=1
 
 today="$(date '+%Y-%m-%d')"
-if grep -q "$today" checkin.log 2>/dev/null; then
+if python3 - <<'PY'
+from pathlib import Path
+import datetime
+import sys
+
+today = datetime.datetime.now().strftime("%Y-%m-%d")
+text = Path("checkin.log").read_text(encoding="utf-8", errors="ignore")
+marker = "\u7b7e\u5230\u72b6\u6001\uff1a\u5df2\u7b7e\u5230"
+index = text.rfind(today)
+sys.exit(0 if index >= 0 and marker in text[index:] else 1)
+PY
+then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] fallback skipped: today's Vae check-in log already exists" >> checkin.log
   exit 0
 fi

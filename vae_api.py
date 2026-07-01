@@ -155,12 +155,28 @@ def run_checkin(cookie, attempts=1, interval=1, session=None):
             "server_time": 0,
         }
 
+    if (
+        current_status.get("ok")
+        and not current_status.get("sign_today")
+        and (checkin_ok or result_code == "already_signed")
+    ):
+        for _ in range(6):
+            time.sleep(1)
+            try:
+                refreshed_status = status(cookie, session=session)
+            except Exception:
+                continue
+            if refreshed_status.get("ok"):
+                current_status = refreshed_status
+                if refreshed_status.get("sign_today"):
+                    break
+
     total_elapsed = time.monotonic() - started_at
     attempt_summary = "\n".join(attempt_logs)
 
     if current_status["ok"]:
         sign_today_text = "已签到" if current_status["sign_today"] else "未签到"
-        success_today = checkin_ok or result_code == "already_signed" or bool(current_status["sign_today"])
+        success_today = bool(current_status["sign_today"])
         final_label = "成功" if success_today else result_label
         message = (
             "【状态】\n"
@@ -174,7 +190,7 @@ def run_checkin(cookie, attempts=1, interval=1, session=None):
             f"* 总签到数：{current_status['total_count']}天\n"
             f"* 今日排名：{format_rank(current_status['rank'])}"
         )
-        return success_today, True, message
+        return success_today, success_today, message
 
     message = (
         "【状态】\n"
