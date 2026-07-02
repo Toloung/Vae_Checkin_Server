@@ -2,7 +2,7 @@
 Description=Run Vae+ fallback check-in if primary did not leave a result
 
 [Timer]
-OnCalendar=*-*-* 00:00:08
+OnCalendar=*-*-* 00:00:20
 AccuracySec=1s
 RandomizedDelaySec=0
 Unit=vae-checkin-fallback.service
