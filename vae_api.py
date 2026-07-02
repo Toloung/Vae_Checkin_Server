@@ -138,6 +138,18 @@ def run_checkin(cookie, attempts=1, interval=1, session=None):
 
         elapsed_ms = int((time.monotonic() - request_started_at) * 1000)
         result_code, result_label, should_retry = classify_checkin_result(checkin_ok, checkin_message)
+
+        if result_code == "already_signed" and not checkin_ok:
+            try:
+                attempt_status = status(cookie, session=session)
+            except Exception:
+                attempt_status = {"ok": False}
+            if attempt_status.get("ok") and not attempt_status.get("sign_today"):
+                result_code = "retryable"
+                result_label = "状态未确认"
+                checkin_message = f"{checkin_message}；状态仍未签到"
+                should_retry = True
+
         attempt_logs.append(f"{attempt}. [{result_label}] {checkin_message}（{elapsed_ms}ms）")
 
         if not should_retry:
